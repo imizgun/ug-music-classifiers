@@ -1,0 +1,68 @@
+data:
+  audio_dir: "data/archive/MER Audio"   # папки Q1/ Q2/ Q3/ Q4/ внутри
+  labels_file: "data/archive/MER Audio/panda_dataset_taffc_annotations.csv"
+  label_column: Quadrant                # значения: Q1, Q2, Q3, Q4
+  id_column: Song
+  split:
+    train: 0.70
+    val: 0.15
+    test: 0.15
+    seed: 42
+
+features:
+  sr: 22050
+  duration: 30          # секунд от начала трека
+  n_mfcc: 20
+  n_fft: 2048
+  hop_length: 512
+  n_mels: 128
+  spectrogram_size: [128, 128]
+  lstm_max_frames: 256  # обрезаем/паддим MFCC-последовательность
+  cache_dir: features/cache
+  embeddings_model: mert     # mert (openl3 не поддерживает Python 3.12+)
+
+models:
+  random_forest:
+    enabled: true
+    input: librosa            # librosa | embeddings
+    n_estimators: 200
+    max_depth: null
+
+  knn:
+    enabled: true
+    input: embeddings         # librosa | embeddings
+    k: 5
+    metric: cosine
+
+  mlp:
+    enabled: true
+    input: librosa            # librosa | embeddings
+    hidden_layers: [256, 128, 64]
+    dropout: 0.3
+    lr: 0.001
+    epochs: 50
+    batch_size: 32
+
+  cnn:
+    enabled: true
+    input: spectrogram
+    lr: 0.001
+    epochs: 30
+    batch_size: 32
+
+  lstm:
+    enabled: true
+    input: mfcc_sequence
+    hidden_size: 128
+    num_layers: 2
+    dropout: 0.3
+    lr: 0.001
+    epochs: 50
+    batch_size: 32
+
+training:
+  device: auto              # auto | cpu | cuda
+
+output:
+  dir: outputs
+  save_models: true
