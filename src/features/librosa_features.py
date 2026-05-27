@@ -14,7 +14,6 @@ def _cache_path(audio_path: str, suffix: str, cache_dir: Path) -> Path:
 
 
 def extract_librosa_vector(audio_path: str, cfg: FeaturesConfig) -> np.ndarray:
-    """Возвращает плоский вектор: mean+std по каждой фиче."""
     y, sr = librosa.load(audio_path, sr=cfg.sr, duration=cfg.duration, mono=True)
 
     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=cfg.n_mfcc,
@@ -38,7 +37,6 @@ def extract_librosa_vector(audio_path: str, cfg: FeaturesConfig) -> np.ndarray:
 
 
 def extract_mfcc_sequence(audio_path: str, cfg: FeaturesConfig) -> np.ndarray:
-    """Возвращает матрицу (lstm_max_frames, n_mfcc) с паддингом/обрезкой."""
     y, sr = librosa.load(audio_path, sr=cfg.sr, duration=cfg.duration, mono=True)
     mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=cfg.n_mfcc,
                                   n_fft=cfg.n_fft, hop_length=cfg.hop_length)

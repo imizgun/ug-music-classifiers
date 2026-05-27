@@ -1,5 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
+import numpy as np
 import torch
 from src.config import Config
 from src.dataset import load_dataset, split_dataset
@@ -46,14 +47,15 @@ def run(cfg: Config) -> dict:
     if "embeddings" in needs:
         features["embeddings"] = get_embeddings(train_df, val_df, test_df, cfg.features)
 
-    # t-SNE визуализация эмбеддингов
-    if "embeddings" in features:
-        X_all = features["embeddings"]
-        plot_embeddings_tsne(
-            X_all["train"][0], X_all["train"][1],
-            title=f"embeddings_{cfg.features.embeddings_model}",
-            out_dir=out_dir,
-        )
+    # t-SNE визуализация — все 900 треков, оба источника фич
+    for feat_name in ("embeddings", "librosa"):
+        if feat_name not in features:
+            continue
+        f = features[feat_name]
+        X_all = np.concatenate([f["train"][0], f["val"][0], f["test"][0]])
+        y_all = np.concatenate([f["train"][1], f["val"][1], f["test"][1]])
+        label = cfg.features.embeddings_model if feat_name == "embeddings" else "librosa"
+        plot_embeddings_tsne(X_all, y_all, title=label, out_dir=out_dir)
 
     # --- Training & evaluation ---
     print("\n[3/3] Training models...")
@@ -62,35 +64,49 @@ def run(cfg: Config) -> dict:
 
     if models_cfg.random_forest.enabled:
         results["random_forest"] = _run_model(
-            RandomForestModel(models_cfg.random_forest),
+            "random_forest", RandomForestModel(models_cfg.random_forest),
             features[models_cfg.random_forest.input],
             out_dir, cfg,
         )
 
     if models_cfg.knn.enabled:
         results["knn"] = _run_model(
-            KNNModel(models_cfg.knn),
+            "knn", KNNModel(models_cfg.knn),
             features[models_cfg.knn.input],
+            out_dir, cfg,
+        )
+
+    if models_cfg.knn_librosa.enabled:
+        results["knn_librosa"] = _run_model(
+            "knn_librosa", KNNModel(models_cfg.knn_librosa),
+            features[models_cfg.knn_librosa.input],
             out_dir, cfg,
         )
 
     if models_cfg.mlp.enabled:
         results["mlp"] = _run_model(
-            MLPModel(models_cfg.mlp),
+            "mlp", MLPModel(models_cfg.mlp),
             features[models_cfg.mlp.input],
+            out_dir, cfg, device=device,
+        )
+
+    if models_cfg.mlp_emb.enabled:
+        results["mlp_emb"] = _run_model(
+            "mlp_emb", MLPModel(models_cfg.mlp_emb),
+            features[models_cfg.mlp_emb.input],
             out_dir, cfg, device=device,
         )
 
     if models_cfg.cnn.enabled:
         results["cnn"] = _run_model(
-            CNNModel(models_cfg.cnn),
+            "cnn", CNNModel(models_cfg.cnn),
             features["spectrogram"],
             out_dir, cfg, device=device,
         )
 
     if models_cfg.lstm.enabled:
         results["lstm"] = _run_model(
-            LSTMModel(models_cfg.lstm),
+            "lstm", LSTMModel(models_cfg.lstm),
             features["mfcc_sequence"],
             out_dir, cfg, device=device,
         )
@@ -105,7 +121,9 @@ def _needed_inputs(cfg: Config) -> set[str]:
     for m, input_type in [
         (mc.random_forest, mc.random_forest.input),
         (mc.knn, mc.knn.input),
+        (mc.knn_librosa, mc.knn_librosa.input),
         (mc.mlp, mc.mlp.input),
+        (mc.mlp_emb, mc.mlp_emb.input),
         (mc.cnn, "spectrogram"),
         (mc.lstm, "mfcc_sequence"),
     ]:
@@ -114,8 +132,7 @@ def _needed_inputs(cfg: Config) -> set[str]:
     return needed
 
 
-def _run_model(model, feat: dict, out_dir: Path, cfg: Config, device=None) -> dict:
-    name = model.name
+def _run_model(name: str, model, feat: dict, out_dir: Path, cfg: Config, device=None) -> dict:
     print(f"\n  → {name}")
 
     X_tr, y_tr = feat["train"]

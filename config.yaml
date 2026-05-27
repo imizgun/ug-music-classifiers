@@ -19,7 +19,7 @@ features:
   spectrogram_size: [128, 128]
   lstm_max_frames: 256  # обрезаем/паддим MFCC-последовательность
   cache_dir: features/cache
-  embeddings_model: mert     # mert (openl3 не поддерживает Python 3.12+)
+  embeddings_model: mert 
 
 models:
   random_forest:
@@ -30,13 +30,28 @@ models:
 
   knn:
     enabled: true
-    input: embeddings         # librosa | embeddings
+    input: embeddings         # kNN на MERT-эмбеддингах
+    k: 5
+    metric: cosine
+
+  knn_librosa:
+    enabled: true
+    input: librosa            # kNN на librosa-фичах (для сравнения)
     k: 5
     metric: cosine
 
   mlp:
     enabled: true
-    input: librosa            # librosa | embeddings
+    input: librosa
+    hidden_layers: [256, 128, 64]
+    dropout: 0.3
+    lr: 0.001
+    epochs: 50
+    batch_size: 32
+
+  mlp_emb:
+    enabled: true
+    input: embeddings         # MLP на MERT-эмбеддингах (для сравнения)
     hidden_layers: [256, 128, 64]
     dropout: 0.3
     lr: 0.001

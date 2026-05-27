@@ -79,7 +79,9 @@ class LSTMConfig(BaseModel):
 class ModelsConfig(BaseModel):
     random_forest: RandomForestConfig = RandomForestConfig()
     knn: KNNConfig = KNNConfig()
+    knn_librosa: KNNConfig = KNNConfig(input="librosa")
     mlp: MLPConfig = MLPConfig()
+    mlp_emb: MLPConfig = MLPConfig(input="embeddings")
     cnn: CNNConfig = CNNConfig()
     lstm: LSTMConfig = LSTMConfig()
 
